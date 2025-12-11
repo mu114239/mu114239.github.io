@@ -6,6 +6,282 @@
     <link rel="icon" href="1286683.png">
   </head>
   <body>
-  https://chatgpt.com/c/69313cbf-b7bc-8324-80bc-428876ca61cb
+  <!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>數獨</title>
+  <style>
+    :root{
+      --cell-size:48px;
+      --gap:2px;
+      --board-bg:#222;
+      --cell-bg:#fff;
+      --given-color:#111;
+      --user-color:#0b63ff;
+      --error-color:#ff4d4f;
+    }
+    *{box-sizing:border-box;font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "PingFang TC", "Microsoft JhengHei", sans-serif}
+    body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f3f4f6;margin:0;padding:20px}
+    .container{width:fit-content}
+    h1{text-align:center;margin:0 0 12px;font-size:18px}
+
+    /* 棋盤 */
+    /* --- 新增：黑色粗線區隔每個 3x3 大格子 --- */
+    .cell {
+      border: 1px solid #ccc;
+    }
+
+    /* 加粗第 3、6 條直線（即第 3 欄與第 6 欄的右邊界） */
+    .cell:nth-child(9n+3),
+    .cell:nth-child(9n+6) {
+      border-right: 4px solid #003366;
+    }
+
+    /* 左粗線：第 1、4、7 欄（每 3 格一組） */
+    .cell:nth-child(9n+1),
+    .cell:nth-child(9n+4),
+    .cell:nth-child(9n+7) {
+      border-left: 4px solid #000;
+    }
+
+    /* 上粗線：第 1~9、28~36、55~63（每 3 列一組） */
+    .cell:nth-child(-n+9),
+    .cell:nth-child(n+28):nth-child(-n+36),
+    .cell:nth-child(n+55):nth-child(-n+63) {
+      border-top: 4px solid #000;
+    }
+
+    /* 右粗線：第 3、6、9 欄（每宮右邊界） */
+    .cell:nth-child(9n+3),
+    .cell:nth-child(9n+6),
+    .cell:nth-child(9n+0) {
+      border-right: 4px solid #003366;
+    }
+
+    /* 下粗線：第 19~27、46~54、73~81（每宮底部） */
+    .cell:nth-child(n+19):nth-child(-n+27),
+    .cell:nth-child(n+46):nth-child(-n+54),
+    .cell:nth-child(n+73):nth-child(-n+81) {
+      border-bottom: 4px solid #000;
+    }
+    
+
+    
+    /* --- 原有棋盤樣式 --- */
+    .board{background:var(--board-bg);padding:8px;border-radius:8px;display:grid;grid-template-columns:repeat(9, var(--cell-size));grid-gap:var(--gap)}
+    .cell{
+      width:var(--cell-size);height:var(--cell-size);display:flex;align-items:center;justify-content:center;background:var(--cell-bg);cursor:pointer;user-select:none;font-weight:600;font-size:18px;color:var(--given-color);border-radius:4px;position:relative
+    }
+    .cell.given{background:#e9eef9;color:var(--given-color);font-weight:700}
+    .cell.selected{outline:4px solid #003366;box-shadow:0 0 0 2px rgba(0,0,0,0.15) inset;background:#dce6f8}
+    .cell.error{background:var(--error-color);color:#fff}
+    /* 粗線區塊 */
+    .cell:nth-child(3n){box-shadow:2px 0 0 0 rgba(0,0,0,0.06) inset}
+    .cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54){ /* horizontal thick line appearance handled by larger container styling */}
+
+    .controls{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px}
+    .num-pad{display:grid;grid-template-columns:repeat(9,42px);gap:6px}
+    .num-btn{width:42px;height:42px;border-radius:6px;border:0;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.06);cursor:pointer;font-weight:700}
+    .num-btn:active{transform:translateY(1px)}
+    .actions{display:flex;gap:8px;margin-top:10px;justify-content:center}
+    .btn{padding:8px 12px;border-radius:8px;border:0;background:#0b63ff;color:#fff;cursor:pointer;font-weight:600}
+    .btn.secondary{background:#efefef;color:#111}
+    .small{font-size:13px;padding:6px 8px}
+
+    .meta{display:flex;gap:12px;justify-content:center;margin-top:8px;color:#555;font-size:13px}
+
+    @media (max-width:520px){:root{--cell-size:38px} .num-pad{grid-template-columns:repeat(9,36px)} .num-btn{width:36px;height:36px}}
+    /* 加粗第 3、6 直線與橫線 */
+  .cell:nth-child(9n+3),
+  .cell:nth-child(9n+6) {
+    border-right: 4px solid #000 !important;
+  }
+  .cell:nth-child(n+19):nth-child(-n+27),
+  .cell:nth-child(n+46):nth-child(-n+54) {
+    border-bottom: 4px solid #000 !important;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>數獨</h1>
+    <div id="board" class="board" aria-label="數獨棋盤"></div>
+
+    <div class="controls">
+      <div class="num-pad" id="numPad"></div>
+    </div>
+    <div class="actions">
+      <button id="eraseBtn" class="btn secondary small">清除</button>
+      <button id="validateBtn" class="btn small">檢查錯誤</button>
+      <button id="resetBtn" class="btn secondary small">重設題目</button>
+      <button id="newBtn" class="btn small">載入另一題</button>
+    </div>
+    <div class="meta">提示: 點選格子，再按下數字鍵；點選已選格子或按「清除」移除數字。</div>
+  </div>
+
+  <script>
+    // 簡易數獨頁面 (單檔案)
+    // 功能：載入題目 -> 選取格子 -> 下數字/清除 -> 檢查錯誤 -> 載入另一題
+
+    // 範例題庫（用字串 81 位數，0 表示空格）
+    const PUZZLES = [
+      // 中等難度
+      '530070000600195000098000060800060003400803001700020006060000280000419005000080079',
+      // 另一題
+      '200080300060070084030500209000105408000000000402706000301007040720040060004010003',
+      // 簡單
+      '003020600900305001001806400008102900700000008006708200002609500800203009005010300'
+    ];
+
+    const boardEl = document.getElementById('board');
+    const numPadEl = document.getElementById('numPad');
+    let selectedCell = null;
+    let puzzleIndex = 0;
+    let original = []; // 固定給定數字
+    let grid = []; // 當前數字
+
+    function createBoard(){
+      boardEl.innerHTML = '';
+      for(let i=0;i<81;i++){
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.index = i;
+        cell.tabIndex = 0;
+        cell.addEventListener('click', ()=>selectCell(i));
+        cell.addEventListener('keydown', (e)=>{
+          if(e.key >= '1' && e.key <= '9'){ placeNumber(Number(e.key)); }
+          if(e.key === 'Backspace' || e.key === 'Delete' || e.key === '0'){ eraseCell(); }
+        });
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function render(){
+      for(let i=0;i<81;i++){
+        const cell = boardEl.children[i];
+        const val = grid[i];
+        cell.textContent = val === 0 ? '' : val;
+        cell.classList.toggle('given', original[i] !== 0);
+        cell.classList.toggle('selected', selectedCell === i);
+        cell.classList.toggle('error', false);
+        // thicker borders to show 3x3 boxes
+        const r = Math.floor(i/9), c = i%9;
+        const style = [];
+        if(c%3 === 0) style.push('border-left:2px solid rgba(0,0,0,0.06)');
+        if((c+1)%3 === 0) style.push('border-right:2px solid rgba(0,0,0,0.06)');
+        if(r%3 === 0) style.push('border-top:2px solid rgba(0,0,0,0.06)');
+        if((r+1)%3 === 0) style.push('border-bottom:2px solid rgba(0,0,0,0.06)');
+        cell.style.cssText += style.join(';');
+        if(original[i] !== 0) cell.style.color = '#111'; else cell.style.color = 'var(--user-color)';
+      }
+    }
+
+    function selectCell(i){
+      if(selectedCell === i){ // toggle off
+        selectedCell = null;
+      } else {
+        selectedCell = i;
+      }
+      render();
+      // focus for keyboard input
+      const el = boardEl.children[i]; if(el) el.focus();
+    }
+
+    function placeNumber(n){
+      if(selectedCell === null) return;
+      if(original[selectedCell] !== 0) return; // 不能改變給定數字
+      grid[selectedCell] = n;
+      render();
+    }
+
+    function eraseCell(){
+      if(selectedCell === null) return;
+      if(original[selectedCell] !== 0) return;
+      grid[selectedCell] = 0;
+      render();
+    }
+
+    function validate(){
+      // 檢查整個盤面是否有「明顯」衝突：同列、同行、同宮有重複
+      const errors = new Set();
+      // rows
+      for(let r=0;r<9;r++){
+        const seen = {};
+        for(let c=0;c<9;c++){
+          const idx = r*9+c; const v = grid[idx];
+          if(v===0) continue;
+          if(seen[v]){ errors.add(idx); errors.add(seen[v]-1); } else seen[v] = idx+1;
+        }
+      }
+      // cols
+      for(let c=0;c<9;c++){
+        const seen = {};
+        for(let r=0;r<9;r++){
+          const idx = r*9+c; const v = grid[idx];
+          if(v===0) continue;
+          if(seen[v]){ errors.add(idx); errors.add(seen[v]-1); } else seen[v] = idx+1;
+        }
+      }
+      // boxes
+      for(let br=0;br<3;br++) for(let bc=0;bc<3;bc++){
+        const seen = {};
+        for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+          const rr = br*3+r, cc = bc*3+c; const idx = rr*9+cc; const v = grid[idx];
+          if(v===0) continue;
+          if(seen[v]){ errors.add(idx); errors.add(seen[v]-1); } else seen[v] = idx+1;
+        }
+      }
+
+      // 標示錯誤
+      for(let i=0;i<81;i++){
+        boardEl.children[i].classList.toggle('error', errors.has(i));
+      }
+
+      if(errors.size === 0) alert('目前沒發現明顯衝突（但不代表解答正確）');
+      else alert('發現 ' + errors.size + ' 處衝突格（已標示）');
+    }
+
+    function loadPuzzle(index){
+      puzzleIndex = index % PUZZLES.length;
+      const s = PUZZLES[puzzleIndex];
+      original = []; grid = [];
+      for(let i=0;i<81;i++){ const v = parseInt(s[i],10) || 0; original.push(v); grid.push(v); }
+      selectedCell = null;
+      render();
+    }
+
+    function resetPuzzle(){
+      // 把格子重設為原題
+      for(let i=0;i<81;i++){ grid[i] = original[i]; }
+      selectedCell = null; render();
+    }
+
+    function nextPuzzle(){ loadPuzzle((puzzleIndex+1)%PUZZLES.length); }
+
+    // 建立數字按鈕
+    function createNumPad(){
+      numPadEl.innerHTML = '';
+      for(let n=1;n<=9;n++){
+        const b = document.createElement('button');
+        b.className = 'num-btn'; b.textContent = n;
+        b.addEventListener('click', ()=>{ placeNumber(n); });
+        numPadEl.appendChild(b);
+      }
+    }
+
+    // 事件綁定
+    document.getElementById('eraseBtn').addEventListener('click', eraseCell);
+    document.getElementById('validateBtn').addEventListener('click', validate);
+    document.getElementById('resetBtn').addEventListener('click', resetPuzzle);
+    document.getElementById('newBtn').addEventListener('click', nextPuzzle);
+
+    // 初始化
+    createBoard(); createNumPad(); loadPuzzle(0);
+  </script>
+</body>
+</html>
+
   </body>
 </html>
